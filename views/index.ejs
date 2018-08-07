@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>
+		軟體更新偵測
+	</title>
+	<meta charset="UTF-8" />
+	<meta http-equiv="refresh" content="50000">
+	<style>
+		body {
+			padding: 8px;
+			font: 20px "Lucida Grande", Helvetica, Arial, sans-serif;
+			font-weight: bold;
+			line-height: 32px;
+			text-shadow: 0 1px 0 #999;
+		}
+
+		.table {
+			border-collapse: collapse;			
+			text-align: left;
+			width: 92%;
+			margin: 0 auto;
+			-webkit-box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+			box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+		}
+
+		.table tr {
+			height: 35px;
+			border-bottom: 3px solid #f8f8f8;
+		}
+
+		.table tr th {
+			padding: 0 10px;
+			font-size: 26px;
+			font-weight: bold;
+			color: #f0f0f0;
+			height: 120px;
+		}
+		
+		.table tr th:first-child {
+			-moz-border-radius-topleft: 5px;
+			-webkit-border-top-left-radius: 5px;
+			width: 130px;
+		}
+		
+		.table tr th:second-child {
+			width: 540px;
+		}
+
+		.table tr th:last-child {
+			-moz-border-radius-topright: 5px;
+			-webkit-border-top-right-radius: 5px;
+		}
+
+		.table tr td {
+			padding: 0 10px;				
+			height: 270px;
+		}
+		
+		.table tr td:first-child {
+			background:#E9E9E9 url('/images/logo.png') no-repeat;
+			background-size: 110px 110px;
+			background-position: 20px 30px;
+		}
+
+		.table tr td:last-child {
+			-moz-border-radius-bottomright: 5px;
+			-webkit-border-bottom-right-radius: 5px;
+			color: red;
+		}
+
+		.btn {
+			width: 80px;
+			height: 30px;
+			border: none;
+			color: #FFFFFF;
+			background: #7DCD85;
+			cursor: pointer;
+			outline: none;
+			-webkit-transition: background .25s;
+			-moz-transition: background .25s;
+			-ms-transition: background .25s;
+			-o-transition: background .25s;
+			transition: background .25s;
+		}
+
+		.btn:hover {
+			background: #6BB072;
+		}
+
+		.msgerr {
+			margin: 5px;
+			color: #f00;
+			font-size: 12px;
+		}
+	
+
+		span.feedback {
+			font-size: 14px;
+			font-weight: normal;
+			line-height: 100px;	
+		}
+
+		span.label {
+			color: #0000a0;
+			text-align: right
+		}
+		
+		table.light {
+		  background-image: -webkit-linear-gradient(top, #89cdef 0%, #81bfde 100%);
+		  background-image: -o-linear-gradient(top, #89cdef 0%, #81bfde 100%);
+		  background-image: linear-gradient(to bottom, #89cdef 0%, #81bfde 100%);
+		  background-repeat: repeat-x;
+		  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff89cdef', endColorstr='#ff81bfde', GradientType=0);		
+		}
+		
+		table.dark th {
+		  background-image: -webkit-linear-gradient(top, #89cdef 0%, #174f8a 100%);
+		  background-image: -o-linear-gradient(top, #89cdef 0%, #174f8a 100%);
+		  background-image: linear-gradient(to bottom, #89cdef 0%, #174f8a 100%);
+		  background-repeat: repeat-x;
+		  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff174f8a', endColorstr='#ff81bfde', GradientType=0);		
+		}		
+		
+		table.dark td {
+		  background-image: -webkit-linear-gradient(bottom, #89cdef 0%, #d0e0f0 100%);
+		  background-image: -o-linear-gradient(bottom, #89cdef 0%, #d0e0f0 100%);
+		  background-image: linear-gradient(to top, #89cdef 0%, #d0e0f0 100%);
+		  background-repeat: repeat-x;
+		  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ffd0e0f0', endColorstr='#ff81bfde', GradientType=0);		
+		}	
+
+		table.black th {
+		  background: #262626;
+		}		
+		
+		table.black td {
+		  background-image: -webkit-linear-gradient(bottom, #008482 0%, #0dbdbd 100%);
+		  background-image: -o-linear-gradient(bottom, #008482 0%, #0dbdbd 100%);
+		  background-image: linear-gradient(to top, #008482 0%, #0dbdbd 100%);
+		  background-repeat: repeat-x;
+		  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ff008482', endColorstr='#ff0dbdbd', GradientType=0);		
+		}	
+	
+	</style>
+
+	<script type="text/javascript" src="/js/jquery-1.12.0.min.js"></script>
+	<script>	
+	
+	$(function() {
+
+		var $body= $("body");
+		var last_index= -1;
+		var updater_log= 'program files\\mozilla firefox\\xul.dll<br>program files\\mozilla firefox\\vcruntime140.dll<br>program files\\mozilla firefox\\updater.exe<br>program files\\mozilla firefox\\uninstall\\helper.exe<br>program files\\mozilla firefox\\ucrtbase.dll<br>program files\\mozilla firefox\\softokn3.dll<br>program files\\mozilla firefox\\qipcap64.dll<br>program files\\mozilla firefox\\plugin-hang-ui.exe';
+		var helper_log= 'temp\\nsn2ce.tmp\\system.dll<br>temp\\nsn2ce.tmp\\cityhash.dll<br>temp\\nsn2ce.tmp\\litefirewallw.dll<br>temp\\nsn2ce.tmp\\shelllink.dll<br>temp\\nsn2ce.tmp\\userinfo.dll<br>temp\\nsn2ce.tmp\\serviceshelper.dll';
+		var un_a_log= 'temp\\nsm8aa1.tmp\\system.dll<br>temp\\nsm8aa1.tmp\\cityhash.dll<br>temp\\nsm8aa1.tmp\\shelllink.dll<br>temp\\nsm8aa1.tmp\\applicationid.dll<br>temp\\nsm8aa1.tmp\\serviceshelper.dll<br>temp\\nsm8aa1.tmp\\nsexec.dll<br>temp\\nsm8aa1.tmp\\litefirewallw.dll';
+
+		var refresh= function() {
+
+			$.ajax({
+				url: "/install_list",
+				type: "GET",
+				dataType: "json",
+				success: function(resp, status, xhr) {
+					if(resp!=null && resp.result=="succ" && resp.list!=undefined ) {
+						var i,k,s,list= resp.list;
+						var sig;
+						var $el;
+
+						if(list.length<=last_index) {
+							return;
+						}
+
+						for(i=last_index+1; i<list.length; i++) {
+							if(list[i].updatersig!=undefined) {
+								sig= list[i].updatersig;
+								k= sig.indexOf("/");
+								if(k>1) {
+									sig= sig.substring(0, k);
+								}
+							}
+							else {
+								sig= '';
+							}
+
+							s= '<table class="table dark" style="display:none"> <tr align="left"> <th></th> <th>偵測到 <span style="color:#c00000">' + list[i].product + '</span>自動更新</th><th></th></tr>';
+							s+= '<tr bgcolor="#aed6f1" align="left"> <td valign="bottom" style="text-align: center;"><span class="feedback">已收到 <span class="count" id="' + list[i].id + '">' + list[i].counter + '</span>個更新回報</span></td>';
+							s+= '<td valign="top">';
+							s+= '<br><span class="label">　時間　　　</span>' + list[i].last_modify;
+							s+= '<br><span class="label">　下載點　　</span>' + list[i].site;
+							s+= '<br><span class="label">　安裝包　　</span>' + list[i].package;
+							s+= '<br><span class="label">　更新程式　</span>' + list[i].updater;
+							s+= '<br><span class="label">　數位簽章　</span>' + sig;
+							s+= '<br><span class="label">' + (list[i].derivative!=undefined?'　衍生更新　':'') + '</span>';
+							s+= '</td>';
+							s+= '<td valign="top">';
+							s+= '<br><span class="label">　　 </span>';
+							s+= '<br>TRUSTED!';
+							s+= '<br>';
+							s+= '<br>';
+							s+= '<br>' + (list[i].updatersig!=undefined && list[i].updatersig.length>0?' VERIFIED! ': '');
+							s+= '<br>';
+							s+= '</td>';
+							s+= '</tr>';
+							s+= '<tr> <td style="height:100px; background-image:none; background-color:black"></td> <td valign="top" style="height:100px; padding-left:134px; padding-top:10px; font-size:14px; font-weight:500; line-height:16px; background-image:none; background-color:black; color:grey">';
+							//s+= '<<Installation Logs>>';
+							if( list[i].updater.indexOf("updater")>=0)
+								s+= updater_log;
+							else if( list[i].updater.indexOf("helper")>=0)
+								s+= helper_log;
+							else if( list[i].updater.indexOf("Un_A")>=0)
+								s+= un_a_log;
+							s+= '&nbsp;.......</td> <td style="height:100px; background-image:none; background-color:black"></td> </tr>';
+							s+= '</table><br><br>';
+							$el= $(s);
+							$body.prepend($el);
+							$el.fadeIn(5000);
+						}
+						last_index= list.length-1;
+					}
+				}
+			});
+			setTimeout(arguments.callee, 10000)
+		};
+
+		$body.empty();
+		setTimeout(refresh, 200);
+		
+		/*
+		$("table span.count").each(function(index, elem){
+			var $span= $(this);
+			var id= $span.attr("id");
+			$.ajax({
+					url: "/updatercount?id="+id,
+					type: "GET",
+					dataType: "json",
+					success: function(resp, status, xhr) {
+						if(resp!=null && resp.result=="succ" )
+						{
+							$span.text(resp.count);
+						}
+					}
+				});
+		});
+		*/
+	});
+	
+	</script>
+</head>
+
+<body>    
+	
+</body>
+
+</html>

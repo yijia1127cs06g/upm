@@ -1,0 +1,461 @@
+var express = require('express');
+var models = require('../models');
+var router = express.Router();
+
+var makeChkSum= function(str) {
+	var s= "";
+	var hex,hex1,hex2,hex3;
+	
+	if(str && str.length>8) {
+		hex1= str.charAt(0) + str.charAt(1);
+		hex3= str.charAt(str.length-2) + str.charAt(str.length-1);
+		hex2= str.charAt(str.length>>1) + str.charAt((str.length>>1)+1);
+		try {
+			hex= parseInt(hex1,16) + parseInt(hex2,16) + parseInt(hex3,16);
+			s= hex.toString(16);
+			if(s.length<4) {
+				while(s.length<4) {
+					s= '0' + s;
+				}						
+			}
+			else {
+				s= s.substring(0, 4);
+			}			
+		}
+		catch(e) {
+			console.log(e);
+		}
+		console.log("s=" + s);
+	}
+	
+	return s;
+}
+
+// home page
+router.get('/', function(req, res, next) {
+  models.install.findAll().then( data => {
+    res.render('index', { title: 'Updater List', data: data, user: req.query.user });
+	  res.status(200);
+  });
+});
+
+// log page
+router.get('/log', function(req, res, next) {
+  models.log.findAll({
+    include:[{model: models.install, required: true}],
+    order: [['id', 'DESC']],
+    limit: 2000
+  }).then( data => {
+    for(let i=0; i<data.length; i++){
+      console.log(data[i])
+    }
+    res.render('log', { title: 'Installation Logs', data: data, user: req.query.user});
+	  res.status(200);
+  });
+});
+
+/*
+router.get('/', function(req, res, next) {
+
+	var db = req.con;
+	var data = "";
+
+	var user = "";
+	var user = req.query.user;
+	
+	if(db==null) {
+		res.render('index', { title: 'Updater List', data: [], user: user });
+		res.status(200);
+		
+	}
+	else {	
+		db.query('SELECT * FROM install ', function(err, rows) {
+			if (err) {
+				console.log(err);
+			}
+			var data = rows;
+
+			// use index.ejs		
+			res.render('index', { title: 'Updater List', data: data, user: user });
+			res.status(200);
+			return;
+		});
+	}
+
+});
+*/
+/*
+router.get('/log', function(req, res, next) {
+
+	var db = req.con;
+	var data = "";
+
+	var user = "";
+	var user = req.query.user;
+	var query_sql;
+
+	if(db==null) {
+		res.render('log', { title: 'Installation Logs', data: [] });
+		res.status(200);	
+	}
+	else {
+		query_sql= 'SELECT a.id, a.time, a.hostip, b.* FROM install as b INNER JOIN log as a on (b.id=a.install_id) ORDER BY a.id DESC LIMIT 2000';
+		db.query(query_sql, function(err, rows) {
+			if (err) {
+				console.log(err);
+			}
+			
+			var data = rows;
+			res.render('log', { title: 'Installation Logs', data: data });
+			res.status(200);
+			return;
+		});		
+	}
+	
+});
+*/
+//to modeify: /add_install
+router.post('/install', function(req, res, next) {
+
+	var db = req.con;
+	var result= false;
+
+	var addLog= function(dt, hostip, install_id) {
+
+		var add_sql = {
+			time: dt,
+			hostip: hostip,
+			install_id: install_id
+		};
+
+		try {
+			db.query('INSERT INTO log SET ?', add_sql, function(err, rows) {});
+		} catch (e) {
+			console.log("db err: " + e);
+		}
+	};
+
+	var addInstall= function(dt, body, callback) {
+
+		var sql = {
+			last_modify: dt,
+			counter: 1,
+			product: body.product,
+			site: body.site,
+			package: body.package,
+			updater: body.updater,
+			updaterhash: body.updaterhash,
+			updatersig: body.updatersig
+		};
+
+		console.log("create installation record");
+		console.log(sql);
+
+		try {
+			db.query('INSERT INTO install SET ?', sql, function(err, result) {
+				if (err) {
+					console.log(err);
+					return;
+				}					
+				console.log(result);
+				console.log(result.insertId);
+				if( result!=undefined && result.insertId) {
+					callback(result.insertId);						
+				}
+						
+			});
+
+		} catch (e) {
+			console.log("db err: " + e);
+		}
+	}
+
+	var incInstall= function(install_id, counter, dt) {
+		var inc_sql= 'UPDATE install SET counter=' + (counter+1) + ' WHERE id = ?'; //last_modify
+
+		console.log(inc_sql);
+		try {
+			db.query(inc_sql, install_id, function(err, rows) {
+				if (err) {
+					console.log(err);
+				}
+			});	
+		} catch (e) {
+			console.log("db err: " + e);
+		}
+	}
+	
+	console.log("===========");
+	
+	if( db==null ) {
+		res.setHeader('Content-Type', 'application/json');
+		res.send('{"result": "fail", "reason": "db disconnection"}');
+		return;
+	}
+	
+	if(req.body.time!=undefined && req.body.hostip!=undefined && 
+		req.body.product!=undefined && req.body.site!=undefined && req.body.package!=undefined && 
+		req.body.updater!=undefined && req.body.updaterhash!=undefined && req.body.updatersig!=undefined) {	
+
+		var t= Number(req.body.time);
+		var dt= new Date(t*1000).toLocaleString();		
+
+		var check_sql= "SELECT id,counter,last_modify FROM install WHERE product='" + req.body.product;
+		check_sql+= "' AND site='" + req.body.site;
+		check_sql+= "' AND package='" + req.body.package;
+		check_sql+= "' AND updater='" + req.body.updater;
+		check_sql+= "' AND updaterhash='" + req.body.updaterhash;
+		check_sql+= "' AND updatersig='" + req.body.updatersig + "'";
+		console.log("check record existence");
+		console.log(check_sql);
+
+		try {
+			db.query(check_sql, function(err, check_rows) {
+				if (err) {
+					console.log(err);
+					return;
+				}
+				
+				if( check_rows==undefined || check_rows.length<=0 ) {
+
+					addInstall(dt, req.body, function(id){
+						addLog(dt, req.body.hostip, id, dt);
+					});
+
+				}
+				else {
+					var install_id= check_rows[0].id;
+					var last_modify= check_rows[0].last_modify;
+					var counter= check_rows[0].counter;
+
+					console.log("check time " + last_modify);
+
+					var time= new Date(last_modify).getTime()/1000;
+					var delta= req.body.time-time;
+					console.log("delta time=" + req.body.time + "-" + time + "=" + delta);
+
+					//if(req.body.time>time && delta<2592000 ) { //within 30 days
+						console.log("check log existence");
+
+						var find_sql= "SELECT * FROM log WHERE hostip='" + req.body.hostip;
+							find_sql+= "' AND install_id=" + install_id;
+
+						db.query(find_sql, function(err, find_rows) {
+							if (err) {
+								console.log(err);
+								return;
+							}
+							//if(find_rows==undefined || find_rows.length<=0) {
+								console.log("add log");	
+								addLog(dt, req.body.hostip, install_id);
+								incInstall(install_id, counter, dt);
+
+							//}
+						});						
+					//}
+				}
+			});
+
+		} catch (e) {
+			console.log("db err: " + e);
+		}	
+
+	}
+	
+	res.setHeader('Content-Type', 'application/json');
+	res.send('{"result": "' +  result ? 'succ' : 'fail' + '"}');
+
+});
+
+
+router.get('/installs', function(req, res, next) {
+
+	var db = req.con;
+	var result= false;
+
+	console.log("======");
+
+	if( db==null ) {
+		res.setHeader('Content-Type', 'application/json');
+		res.send('{"result": "fail", "reason": "db disconnection"}');
+		return;
+	}
+
+	//if(req.query.last!=undefined )
+	{
+		var query_sql= "SELECT * from install";
+
+		console.log("get installation list:");
+		try {
+			db.query(query_sql, function(err, rows) {
+				if (err) {
+					console.log(err);
+					res.setHeader('Content-Type', 'application/json');
+					res.send('{"result": "fail"}');
+					return;
+				}
+
+				if (rows.length > 0) {
+					var i,s,sig;						
+					s= '{"result": "succ", "list": [';
+					i= 0;
+					for(i=0; i<rows.length; i++) {
+						sig= rows[i].updatersig!=undefined? rows[i].updatersig : "";
+						s+= '{"id": ' + rows[i].id + ', "counter": ' + rows[i].counter + ', "last_modify": "' + rows[i].last_modify.toLocaleString() + '" , "product": "' + rows[i].product + '"';
+						s+= ', "site": "' + rows[i].site + '", "package": "' + rows[i].package + '"';
+						s+= ', "updater": "' + rows[i].updater + '", "updatersig": "' + sig + '"';
+						s+= '}';
+						if(i<(rows.length-1)) {
+							s+= ', ';
+						}
+					}
+					s+= ']}';
+					res.status(200);
+					res.setHeader('Content-Type', 'application/json');
+					res.send(s);
+					return;
+				}
+				else {
+					console.log("not found");
+					res.status(200);
+					res.setHeader('Content-Type', 'application/json');
+					res.send('{"result": "succ", "list": []}');
+				return;
+				}
+			});
+
+		} catch (e) {
+			console.log("db err: " + e);
+			res.setHeader('Content-Type', 'application/json');
+			res.send('{"result": "fail"}');
+		}
+	}
+
+});
+
+//to modeify: /list_updater
+router.get('/updaters', function(req, res, next) {
+
+	var db = req.con;
+	var result= false;
+	
+	console.log("======");	
+	if( db==null ) {
+		res.setHeader('Content-Type', 'application/json');
+		res.send('{"result": "fail", "reason": "db disconnection"}');
+		return;
+	}
+	
+	if(req.query.seq!=undefined && req.query.limit!=undefined) {
+		var limit= req.query.limit;
+		var id= req.query.seq;
+		var query_sql= "SELECT * FROM install WHERE counter >= 1 AND id>= '" + id + "' ORDER BY id ASC LIMIT " + limit;
+
+		console.log("get updater list:");
+		console.log(query_sql);
+		try {
+			db.query(query_sql, function(err, rows) {
+				if (err) {
+					console.log(err);
+					res.status(200);
+					res.setHeader('Content-Type', 'application/json');
+					res.send('{"total": "0"}');
+					return;
+				}
+
+				var count = rows.length;
+				var i,list;
+				
+				if( count<=0 ) {
+					list= '{"total": "0"}';
+				}
+				else {
+					list= '{"total": "' + count + '", "end": "' + '1001'/* rows[count-1].id*/ + '", "list": [';
+					for(i=0; i<count; i++) {
+						list+= '{"seq": "' + rows[i].id + '", "updater": "' + rows[i].updater + '", "updaterhash": "' + rows[i].updaterhash + '"}';
+						if( i<(count-1) )
+							list+= ', ';
+					}					
+					list+= ']}';
+				}
+				console.log("list=" + list);
+				console.log();
+				res.status(200);
+				res.setHeader('Content-Type', 'application/json');
+				res.send(list);
+				return;
+			});
+
+		} catch (e) {  
+			console.log("db err: " + e);
+			res.setHeader('Content-Type', 'application/json');
+			res.send('{"result": "unknown"}');
+			return;
+		}
+	}
+	else {
+		res.setHeader('Content-Type', 'application/json');
+		res.send('{"result": "unknown"}');
+	}
+
+});
+
+router.post('/query_updater', function(req, res, next) {
+
+	var db = req.con;
+	var result= false;
+	
+	console.log("======");
+	if( db==null ) {
+		res.setHeader('Content-Type', 'application/json');
+		res.send('{"result": "fail", "reason": "db disconnection"}');
+		return;
+	}
+	
+	if(req.body.package!=undefined && req.body.packagehash!=undefined) {
+		var query_sql= "SELECT * FROM install WHERE packagehash= '" + req.body.packagehash + "' AND counter >= 1";  //validate if more than 2 votes
+
+		console.log("query updater:");
+		console.log(query_sql);
+		try {
+			db.query(query_sql, function(err, rows) {
+				if (err) {
+					console.log(err);
+					res.setHeader('Content-Type', 'application/json');
+					res.send('{"trust": "false"}');
+					return;
+				}
+
+				var count = rows.length;
+				if (count > 0) {
+					//record exists.
+					var s= 'counter=' + (rows[0].counter);
+					var chk= makeChkSum(rows[0].packagehash);
+					console.log(s);
+					res.setHeader('Content-Type', 'application/json');
+					res.send('{"trust": "true", "check":"' + chk+ '"}');
+					return;
+				}
+				else {
+					console.log("not found");
+					res.setHeader('Content-Type', 'application/json');
+					res.send('{"trust": "false"}');
+					return;
+				}
+			});			
+
+		} catch (e) {  
+			console.log("db err: " + e);
+			res.setHeader('Content-Type', 'application/json');
+			res.send('{"trust": "unknown"}');
+			return;
+		}
+	}
+	else  {
+		res.setHeader('Content-Type', 'application/json');
+		res.send('{"trust": "false"}');
+	}
+
+});
+
+module.exports = router;
