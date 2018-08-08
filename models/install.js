@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(128),
       allowNull: true
     },
-    package_name: {
+    package: {
       type: DataTypes.STRING(512),
       allowNull: true
     },
@@ -61,7 +61,6 @@ module.exports = (sequelize, DataTypes) => {
 
   install.associate = function(models) {
         models.install.hasMany(models.log);
-          
   };
 
   return install;
