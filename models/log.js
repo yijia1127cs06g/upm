@@ -10,7 +10,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     time: {
       type: DataTypes.DATE,
-      allowNull: false
+      allowNull: false,
+      defaultValue: sequelize.fn("NOW")
     },
     hostip: {
       type: DataTypes.STRING(32),
@@ -26,7 +27,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     deleted: {
       type: DataTypes.INTEGER(4),
-      allowNull: true
+      allowNull: true,
+      defaultValue: null
     }
   }, {
     underscored: true,

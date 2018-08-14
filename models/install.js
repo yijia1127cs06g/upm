@@ -42,11 +42,13 @@ module.exports = (sequelize, DataTypes) => {
     },
     last_modify: {
       type: DataTypes.DATE,
-      allowNull: false
+      allowNull: false,
+      defaultValue: sequelize.fn('NOW')
     },
     counter: {
       type: DataTypes.INTEGER(11),
-      allowNull: false
+      allowNull: false,
+      defaultValue: 1
     },
     deleted: {
       type: DataTypes.INTEGER(4),
@@ -57,6 +59,7 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false,
     freezeTableName: true,
     tableName: 'install'
+    
   });
 
   install.associate = function(models) {

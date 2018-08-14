@@ -2,6 +2,34 @@ var express = require('express');
 var models = require('../models');
 var router = express.Router();
 
+const Op = models.Sequelize.Op;
+var paramLists = ["product", "hostip", "site", "package",
+                  "updater", "updaterhash", "updatersig"];
+  
+
+
+var checkParams = function(body){
+  for(var i=0; i<paramLists.length; i++){
+    if (body[paramLists[i]] == undefined)
+      return paramLists[i]+" is missing"
+  }
+  if (body.time == undefined)
+    body.time = new Date().toLocaleString();
+  else
+    body.time =  new Date(Number(body.time)*1000).toLocaleString();	
+  return body;
+}
+
+var sendPostResponse = function(res, result, reason){
+  res.setHeader('Content-Type', 'application/json');
+  if (result)
+    res.send('{ "result": "succ" }');
+  else
+    res.send('{"result": "fail", "reason": "'+reason+'" }');
+}
+
+
+
 var makeChkSum= function(str) {
 	var s= "";
 	var hex,hex1,hex2,hex3;
@@ -33,196 +61,118 @@ var makeChkSum= function(str) {
 
 // home page
 router.get('/', function(req, res, next) {
-  models.install.findAll().then( data => {
-    res.render('index', { title: 'Updater List', data: data, user: req.query.user });
-    res.status(200);
-  }).catch(err=>{
-    console.log("Unable to connect to the database: ", err);
-    res.render('index', { title: 'updater List', data: [], user: req.query.user });
-    res.status(200);
-  });
-});
+  // select * from install  
+  res.render('index');
+})
 
 // log page
 router.get('/log', function(req, res, next) {
-  if (models.log == undefined){
+  models.log.findAll({
+    attribute: {exclude:['install_id', 'deleted']},
+    include:[{model: models.install, required: true}],
+    order: [['id', 'DESC']],
+    limit: 2000})
+  .then( data => {
+    res.render('log', { title: 'Installation Logs', data: data, user: req.query.user});
+    res.status(200);
+  })
+  .catch(err => {
+    console.log(err);
     res.render('log', { title: 'Installation Logs', data: [], user: req.query.user});
-		res.status(200);
-  } 
-  else {
-    models.log.findAll({
-      attribute: {exclude:['install_id', 'deleted']},
-      include:[{model: models.install, required: true}],
-      order: [['id', 'DESC']],
-      limit: 2000})
-    .then( data => {
-      res.render('log', { title: 'Installation Logs', data: data, user: req.query.user});
-      res.status(200);
-    });
-  }
+    res.status(200);
+  });
 });
 
 //to modeify: /add_install
 router.post('/install', function(req, res, next) {
 
-	var db = req.con;
-	var result= false;
 
-	var addLog= function(dt, hostip, install_id) {
-
-		var add_sql = {
-			time: dt,
-			hostip: hostip,
-			install_id: install_id
-		};
-
-		try {
-			db.query('INSERT INTO log SET ?', add_sql, function(err, rows) {});
-		} catch (e) {
-			console.log("db err: " + e);
-		}
-	};
-
-	var addInstall= function(dt, body, callback) {
-
-		var sql = {
-			last_modify: dt,
-			counter: 1,
-			product: body.product,
-			site: body.site,
-			package: body.package,
-			updater: body.updater,
-			updaterhash: body.updaterhash,
-			updatersig: body.updatersig
-		};
-
-		console.log("create installation record");
-		console.log(sql);
-
-		try {
-			db.query('INSERT INTO install SET ?', sql, function(err, result) {
-				if (err) {
-					console.log(err);
-					return;
-				}					
-				console.log(result);
-				console.log(result.insertId);
-				if( result!=undefined && result.insertId) {
-					callback(result.insertId);						
-				}
-						
-			});
-
-		} catch (e) {
-			console.log("db err: " + e);
-		}
-	}
-
-	var incInstall= function(install_id, counter, dt) {
-		var inc_sql= 'UPDATE install SET counter=' + (counter+1) + ' WHERE id = ?'; //last_modify
-
-		console.log(inc_sql);
-		try {
-			db.query(inc_sql, install_id, function(err, rows) {
-				if (err) {
-					console.log(err);
-				}
-			});	
-		} catch (e) {
-			console.log("db err: " + e);
-		}
-	}
-	
 	console.log("===========");
-	
-	if( db==null ) {
-		res.setHeader('Content-Type', 'application/json');
-		res.send('{"result": "fail", "reason": "db disconnection"}');
+
+	if( models.install==null || models.log == null) {
+    sendPostResponse(res, false, "db error");
 		return;
 	}
-	
-	if(req.body.time!=undefined && req.body.hostip!=undefined && 
-		req.body.product!=undefined && req.body.site!=undefined && req.body.package!=undefined && 
-		req.body.updater!=undefined && req.body.updaterhash!=undefined && req.body.updatersig!=undefined) {	
+  
+  var body = checkParams(req.body);
+  if (typeof body == "string"){
+    res.setHeader('Content-Type', 'application/json');
+    res.send('{"result": "fail", "reason": "'+body+'" }')
+    return; 
+  } else {	
 
-		var t= Number(req.body.time);
-		var dt= new Date(t*1000).toLocaleString();		
+    models.install.findOrCreate({
+      where:{
+        product: body.product, 
+        site: body.site, 
+        package: body.package,
+        updater: body.updater, 
+        updaterhash: body.updaterhash, 
+        updatersig: body.updatersig
+      }
+    }).spread( (installData,isNewInstall) => {
+      console.log(isNewInstall);
+      if (isNewInstall) {
+        // Complete the last_modify for new install data
+        installData.last_modify = body.time;
+        installData.save().then(()=>{});
+      
+        // Add log for new install data
+        models.log.create({
+          time: installData.last_modify,
+          hostip: body.hostip,
+          install_id: installData.id
+        }).then( ()=>{ 
+          sendPostResponse(res, true); 
+          console.log("Success: add new data into log, install"); });
+      }
+      else { // This install data is existed in database
+        
+        // Verify the last_modify of existed install data
+        console.log("check time " + installData.last_modify);
+        var oldTime = new Date(installData.last_modify).getTime();
+        var newTime = new Date(body.time).getTime();
 
-		var check_sql= "SELECT id,counter,last_modify FROM install WHERE product='" + req.body.product;
-		check_sql+= "' AND site='" + req.body.site;
-		check_sql+= "' AND package='" + req.body.package;
-		check_sql+= "' AND updater='" + req.body.updater;
-		check_sql+= "' AND updaterhash='" + req.body.updaterhash;
-		check_sql+= "' AND updatersig='" + req.body.updatersig + "'";
-		console.log("check record existence");
-		console.log(check_sql);
-
-		try {
-			db.query(check_sql, function(err, check_rows) {
-				if (err) {
-					console.log(err);
-					return;
-				}
-				
-				if( check_rows==undefined || check_rows.length<=0 ) {
-
-					addInstall(dt, req.body, function(id){
-						addLog(dt, req.body.hostip, id, dt);
-					});
-
-				}
-				else {
-					var install_id= check_rows[0].id;
-					var last_modify= check_rows[0].last_modify;
-					var counter= check_rows[0].counter;
-
-					console.log("check time " + last_modify);
-
-					var time= new Date(last_modify).getTime()/1000;
-					var delta= req.body.time-time;
-					console.log("delta time=" + req.body.time + "-" + time + "=" + delta);
-
-					//if(req.body.time>time && delta<2592000 ) { //within 30 days
-						console.log("check log existence");
-
-						var find_sql= "SELECT * FROM log WHERE hostip='" + req.body.hostip;
-							find_sql+= "' AND install_id=" + install_id;
-
-						db.query(find_sql, function(err, find_rows) {
-							if (err) {
-								console.log(err);
-								return;
-							}
-							//if(find_rows==undefined || find_rows.length<=0) {
-								console.log("add log");	
-								addLog(dt, req.body.hostip, install_id);
-								incInstall(install_id, counter, dt);
-
-							//}
-						});						
-					//}
-				}
-			});
-
-		} catch (e) {
-			console.log("db err: " + e);
-		}	
-
-	}
-	
-	res.setHeader('Content-Type', 'application/json');
-	res.send('{"result": "' +  result ? 'succ' : 'fail' + '"}');
-
+        if (newTime>oldTime && ((newTime-oldTime)<2592000)){
+          console.log("check log existence");
+          models.log.findOrCreate({
+            where:{
+              hostip: body.hostip,
+              install_id: installData.id
+            }
+          }).spread( (logData, isNewLog) => {
+            if (isNewLog){ 
+              logData.time = body.time;
+              logData.save().then(()=>{});
+              // Update the correspond install data
+              installData.counter = installData.counter + 1;
+              installData.last_modify = body.time;
+              installData.save().then(()=>{
+                sendPostResponse(res, true);
+                console.log("Success: add new log and update install");
+                return;
+              });
+            } else {
+              // else -> this log is existed in log table
+              sendPostResponse(res, false, "log is existed");
+            }
+          });
+        }else{ // Install log is over 30 day
+          sendPostResponse(res, false, "install is Expired");
+        }
+      }
+    });
+  }
 });
 
 // /installs for home page
 router.get('/installs', function(req, res, next) {
 
-	var result= false;
 
 	console.log("======");
   
 	if( models.install==undefined ) {
+    
 		res.setHeader('Content-Type', 'application/json');
 		res.send('{"result": "fail", "reason": "db disconnection"}');
 		return;
@@ -256,7 +206,7 @@ router.get('/installs', function(req, res, next) {
       return;
     }
   }).catch( err =>{
-      console.log(err);
+      console.log("db err: " + err);
       res.setHeader('Content-Type', 'application/json');
       res.send('{"result": "fail"}');
       return;
@@ -267,126 +217,82 @@ router.get('/installs', function(req, res, next) {
 //to modeify: /list_updater
 router.get('/updaters', function(req, res, next) {
 
-	var db = req.con;
-	var result= false;
-	
 	console.log("======");	
-	if( db==null ) {
-		res.setHeader('Content-Type', 'application/json');
-		res.send('{"result": "fail", "reason": "db disconnection"}');
-		return;
-	}
+  console.log(req.query);
 	
 	if(req.query.seq!=undefined && req.query.limit!=undefined) {
-		var limit= req.query.limit;
-		var id= req.query.seq;
-		var query_sql= "SELECT * FROM install WHERE counter >= 1 AND id>= '" + id + "' ORDER BY id ASC LIMIT " + limit;
-
 		console.log("get updater list:");
-		console.log(query_sql);
-		try {
-			db.query(query_sql, function(err, rows) {
-				if (err) {
-					console.log(err);
-					res.status(200);
-					res.setHeader('Content-Type', 'application/json');
-					res.send('{"total": "0"}');
-					return;
-				}
-
-				var count = rows.length;
-				var i,list;
-				
-				if( count<=0 ) {
+  
+    var list;
+    
+    models.install.findAll({
+      where: {
+        counter: {[Op.gte]: 1 },        // counter >= 1
+        id: {[Op.gte]: Number(req.query.seq) }  // id >= seq
+      },
+      order: [['id','ASC']],            // order by id ASC
+      limit: Number(req.query.limit)
+    }).then( rows => {
+      if (rows.length<=0){ 
 					list= '{"total": "0"}';
-				}
-				else {
-					list= '{"total": "' + count + '", "end": "' + '1001'/* rows[count-1].id*/ + '", "list": [';
-					for(i=0; i<count; i++) {
-						list+= '{"seq": "' + rows[i].id + '", "updater": "' + rows[i].updater + '", "updaterhash": "' + rows[i].updaterhash + '"}';
-						if( i<(count-1) )
-							list+= ', ';
-					}					
-					list+= ']}';
-				}
-				console.log("list=" + list);
-				console.log();
-				res.status(200);
-				res.setHeader('Content-Type', 'application/json');
-				res.send(list);
-				return;
-			});
-
-		} catch (e) {  
-			console.log("db err: " + e);
-			res.setHeader('Content-Type', 'application/json');
-			res.send('{"result": "unknown"}');
-			return;
-		}
-	}
-	else {
+      } 
+      else {
+        list= '{"total": "' + rows.length + '", "end": "'+rows[rows.length-1].id+ '", "list": [';
+        for (let row of rows)
+          list+= '{"seq": "' + row.id + '", "updater": "' + row.updater + '", "updaterhash": "' + row.updaterhash + '"},';
+        list = list.slice(0,-1) + ']}';
+      }
+        console.log("list=" + list);
+        res.status(200);
+        res.setHeader('Content-Type', 'application/json');
+		    res.send(list);
+		    return;
+    }).catch(err => {
+      console.log("db err: " + err);
+      res.setHeader('Content-Type', 'application/json');
+      res.send('{"result": "fail"}');
+    });
+  } else {    //  req.query.seq==undefined || req.query.limit==undefined
 		res.setHeader('Content-Type', 'application/json');
 		res.send('{"result": "unknown"}');
 	}
-
 });
 
 router.post('/query_updater', function(req, res, next) {
-
-	var db = req.con;
-	var result= false;
 	
 	console.log("======");
-	if( db==null ) {
-		res.setHeader('Content-Type', 'application/json');
-		res.send('{"result": "fail", "reason": "db disconnection"}');
-		return;
-	}
 	
 	if(req.body.package!=undefined && req.body.packagehash!=undefined) {
-		var query_sql= "SELECT * FROM install WHERE packagehash= '" + req.body.packagehash + "' AND counter >= 1";  //validate if more than 2 votes
 
 		console.log("query updater:");
-		console.log(query_sql);
-		try {
-			db.query(query_sql, function(err, rows) {
-				if (err) {
-					console.log(err);
-					res.setHeader('Content-Type', 'application/json');
-					res.send('{"trust": "false"}');
-					return;
-				}
-
-				var count = rows.length;
-				if (count > 0) {
-					//record exists.
-					var s= 'counter=' + (rows[0].counter);
-					var chk= makeChkSum(rows[0].packagehash);
-					console.log(s);
-					res.setHeader('Content-Type', 'application/json');
-					res.send('{"trust": "true", "check":"' + chk+ '"}');
-					return;
-				}
-				else {
-					console.log("not found");
-					res.setHeader('Content-Type', 'application/json');
-					res.send('{"trust": "false"}');
-					return;
-				}
-			});			
-
-		} catch (e) {  
-			console.log("db err: " + e);
+    
+    models.install.findAll({
+      where: {
+        updaterhash: req.body.packagehash,  
+        counter: {[Op.gte]: 1}  //counter >= 1
+      }
+    }).then(rows => {
+      console.log(rows)
+      if (rows.length == 0){
+        console.log("not found");
+        res.setHeader('Content-Type', 'application/json');
+        res.send('{"trust": "false"}');
+      } else {
+        var s= 'counter=' + (rows[0].counter);
+        var chk= makeChkSum(rows[0].updaterhash);
+        console.log(s);
+        res.setHeader('Content-Type', 'application/json');
+        res.send('{"trust": "true", "check":"' + chk+ '"}');
+      }
+    }).catch(err => {
+      console.log("db err: " + err);
 			res.setHeader('Content-Type', 'application/json');
 			res.send('{"trust": "unknown"}');
-			return;
-		}
-	}
-	else  {
-		res.setHeader('Content-Type', 'application/json');
+    });
+  }else{
+    res.setHeader('Content-Type', 'application/json');
 		res.send('{"trust": "false"}');
-	}
-
+  }
 });
 
 module.exports = router;

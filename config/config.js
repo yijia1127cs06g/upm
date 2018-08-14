@@ -4,6 +4,13 @@ module.exports = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     host: process.env.DB_HOSTNAME,
-    dialect: 'mysql'
+    dialect: 'mysql',
+    timezone: '+08:00',
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 4000,
+      idle: 10000                    
+    }
   }
 };

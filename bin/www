@@ -29,6 +29,13 @@ var server = http.createServer(app);
  * Use Sequelize.
  */
 
+models.sequelize.authenticate().then(()=>{
+  console.log("success: connecting to db successfully");
+  })
+  .catch(err=> {
+    console.log("failed: unable to connect to db");
+  });
+
 models.sequelize.sync({force: false}).then(function() {
   /**
    * Listen on provided port, on all network interfaces.
@@ -38,7 +45,10 @@ models.sequelize.sync({force: false}).then(function() {
   });
   server.on('error', onError);
   server.on('listening', onListening);
-});
+  })
+  .catch(err => {
+    console.log("failed: unable to synchronize the table");
+  });
 
 
 /**
