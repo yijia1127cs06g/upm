@@ -262,13 +262,13 @@ router.post('/query_updater', function(req, res, next) {
 	
 	console.log("======");
 	
-	if(req.body.package!=undefined && req.body.packagehash!=undefined) {
+	if(req.body.package!=undefined && req.body.updaterhash!=undefined) {
 
 		console.log("query updater:");
     
     models.install.findAll({
       where: {
-        updaterhash: req.body.packagehash,  
+        updaterhash: req.body.updaterhash,  
         counter: {[Op.gte]: 1}  //counter >= 1
       }
     }).then(rows => {
