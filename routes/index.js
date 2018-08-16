@@ -4,7 +4,7 @@ var router = express.Router();
 
 const Op = models.Sequelize.Op;
 var paramLists = ["product", "hostip", "site", "package",
-                  "updater", "updaterhash", "updatersig"];
+                  "updater", "derivativehash", "updatersig"];
   
 
 
@@ -107,14 +107,18 @@ router.post('/install', function(req, res, next) {
         site: body.site, 
         package: body.package,
         updater: body.updater, 
-        updaterhash: body.updaterhash, 
+        derivativehash: body.derivativehash, 
         updatersig: body.updatersig
       }
     }).spread( (installData,isNewInstall) => {
       console.log(isNewInstall);
       if (isNewInstall) {
         // Complete the last_modify for new install data
-        installData.last_modify = body.time;
+        installData.last_modify = body.time; 
+        if (body.updaterhash == undefined)
+          installData.updaterhash = body.derivativehash;
+        else
+          installData.updaterhash = body.updaterhash;
         installData.save().then(()=>{});
       
         // Add log for new install data
@@ -239,7 +243,7 @@ router.get('/updaters', function(req, res, next) {
       else {
         list= '{"total": "' + rows.length + '", "end": "'+rows[rows.length-1].id+ '", "list": [';
         for (let row of rows)
-          list+= '{"seq": "' + row.id + '", "updater": "' + row.updater + '", "updaterhash": "' + row.updaterhash + '"},';
+          list+= '{"seq": "' + row.id + '", "updater": "' + row.updater + '", "derivativehash": "' + row.derivativehash + '"},';
         list = list.slice(0,-1) + ']}';
       }
         console.log("list=" + list);
@@ -262,13 +266,13 @@ router.post('/query_updater', function(req, res, next) {
 	
 	console.log("======");
 	
-	if(req.body.package!=undefined && req.body.updaterhash!=undefined) {
+	if(req.body.package!=undefined && req.body.derivativehash!=undefined) {
 
 		console.log("query updater:");
     
     models.install.findAll({
       where: {
-        updaterhash: req.body.updaterhash,  
+        derivativehash: req.body.derivativehash,  
         counter: {[Op.gte]: 1}  //counter >= 1
       }
     }).then(rows => {
@@ -279,7 +283,7 @@ router.post('/query_updater', function(req, res, next) {
         res.send('{"trust": "false"}');
       } else {
         var s= 'counter=' + (rows[0].counter);
-        var chk= makeChkSum(rows[0].updaterhash);
+        var chk= makeChkSum(rows[0].derivativehash);
         console.log(s);
         res.setHeader('Content-Type', 'application/json');
         res.send('{"trust": "true", "check":"' + chk+ '"}');
