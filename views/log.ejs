@@ -87,6 +87,7 @@
 			<th>Hash</th>
 			<th>Signature</th>
 			<th>Derivative</th>			
+      <th>Derivative Hash</th>
             <th></th>
         </tr>
 		<% if( data!=undefined && data.length>0 ) {%>
@@ -114,13 +115,16 @@
                     <%= data[i].install.updater  %>
                 </td>
                 <td>
-                    <%= data[i].install.updaterhash  %>
+                    <%= data[i].install.updaterhash %>
                 </td>
                 <td>
                     <%= data[i].install.updatersig  %>
                 </td>
                 <td>
                     <%= data[i].install.derivative  %>
+                </td>
+                <td>
+                  <%= data[i].install.derivativehash   %>
                 </td>
                 <td></td>
             </tr>
