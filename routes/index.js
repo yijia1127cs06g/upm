@@ -90,10 +90,11 @@ router.post('/install', function(req, res, next) {
 	console.log("===========");
 
 	if( models.install==null || models.log == null) {
-    sendPostResponse(res, false, "db error");
+        res.setHeader('Content-Type', 'application/json');
+        res.send('{ "result": "fail", "reason":"db error" }');
 		return;
 	}
-  
+    console.log(req.body); 
   var body = checkParams(req.body);
   if (typeof body == "string"){
     res.setHeader('Content-Type', 'application/json');
@@ -127,7 +128,9 @@ router.post('/install', function(req, res, next) {
           hostip: body.hostip,
           install_id: installData.id
         }).then( ()=>{ 
-          sendPostResponse(res, true); 
+          res.setHeader('Content-Type', 'application/json');
+          res.send('{ "result": "succ"}');
+
           console.log("Success: add new data into log, install"); });
       }
       else { // This install data is existed in database
@@ -152,17 +155,22 @@ router.post('/install', function(req, res, next) {
               installData.counter = installData.counter + 1;
               installData.last_modify = body.time;
               installData.save().then(()=>{
-                sendPostResponse(res, true);
+                res.setHeader('Content-Type', 'application/json');
+                res.send('{ "result": "succ"}');
                 console.log("Success: add new log and update install");
                 return;
               });
             } else {
               // else -> this log is existed in log table
-              sendPostResponse(res, false, "log is existed");
+                res.setHeader('Content-Type', 'application/json');
+                res.send('{ "result": "fail", "reason": "log is existed"}');
+
             }
           });
         }else{ // Install log is over 30 day
-          sendPostResponse(res, false, "install is Expired");
+            res.setHeader('Content-Type', 'application/json');
+            res.send('{ "result": "fail", "reason":"install is Expired"}');
+
         }
       }
     });
