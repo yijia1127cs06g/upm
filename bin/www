@@ -36,7 +36,7 @@ models.sequelize.authenticate().then(()=>{
     console.log("failed: unable to connect to db");
   });
 
-models.sequelize.sync({force: false}).then(function() {
+models.sequelize.sync({force: true}).then(function() {
   /**
    * Listen on provided port, on all network interfaces.
    */

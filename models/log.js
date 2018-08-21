@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     hostip: {
       type: DataTypes.STRING(32),
-      allowNull: true
+      allowNull: false
     },
     install_id: {
       type: DataTypes.INTEGER(11),

@@ -3,9 +3,15 @@ var models = require('../models');
 var router = express.Router();
 
 const Op = models.Sequelize.Op;
-var paramLists = ["product", "hostip", "site", "package",
-                  "updater", "derivativehash", "updatersig"];
-  
+
+/* ----- User defined ----- */
+var paramLists = ["product", "hostip", "updaterhash",
+                  "updater", "derivative", "derivativehash"];
+
+const TIME_LIMIT = 300;
+const COUNTER = 3;
+/* ------------------------ */
+
 
 
 var checkParams = function(body){
@@ -18,14 +24,6 @@ var checkParams = function(body){
   else
     body.time =  new Date(Number(body.time)*1000).toLocaleString();	
   return body;
-}
-
-var sendPostResponse = function(res, result, reason){
-  res.setHeader('Content-Type', 'application/json');
-  if (result)
-    res.send('{ "result": "succ" }');
-  else
-    res.send('{"result": "fail", "reason": "'+reason+'" }');
 }
 
 
@@ -96,6 +94,7 @@ router.post('/install', function(req, res, next) {
 	}
     console.log(req.body); 
   var body = checkParams(req.body);
+  console.log(body);
   if (typeof body == "string"){
     res.setHeader('Content-Type', 'application/json');
     res.send('{"result": "fail", "reason": "'+body+'" }')
@@ -105,21 +104,17 @@ router.post('/install', function(req, res, next) {
     models.install.findOrCreate({
       where:{
         product: body.product, 
-        site: body.site, 
-        package: body.package,
         updater: body.updater, 
+        updaterhash: body.updaterhash, 
         derivativehash: body.derivativehash, 
-        updatersig: body.updatersig
+        derivative: body.derivative
       }
     }).spread( (installData,isNewInstall) => {
       console.log(isNewInstall);
       if (isNewInstall) {
         // Complete the last_modify for new install data
-        installData.last_modify = body.time; 
-        if (body.updaterhash == undefined)
-          installData.updaterhash = body.derivativehash;
-        else
-          installData.updaterhash = body.updaterhash;
+        for (var i in body)
+            installData[i] = body[i]
         installData.save().then(()=>{});
       
         // Add log for new install data
@@ -140,7 +135,7 @@ router.post('/install', function(req, res, next) {
         var oldTime = new Date(installData.last_modify).getTime();
         var newTime = new Date(body.time).getTime();
 
-        if (newTime>oldTime && ((newTime-oldTime)<2592000)){
+        if (newTime>oldTime && ((newTime-oldTime)<TIME_LIMIT)){
           console.log("check log existence");
           models.log.findOrCreate({
             where:{
@@ -164,7 +159,6 @@ router.post('/install', function(req, res, next) {
               // else -> this log is existed in log table
                 res.setHeader('Content-Type', 'application/json');
                 res.send('{ "result": "fail", "reason": "log is existed"}');
-
             }
           });
         }else{ // Install log is over 30 day
@@ -281,7 +275,7 @@ router.post('/query_updater', function(req, res, next) {
     models.install.findAll({
       where: {
         derivativehash: req.body.derivativehash,  
-        counter: {[Op.gte]: 1}  //counter >= 1
+        counter: {[Op.gte]: COUNTER}  //counter >= 1
       }
     }).then(rows => {
       console.log(rows)

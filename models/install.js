@@ -35,7 +35,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     derivative: {
       type: DataTypes.STRING(512),
-      allowNull: true
+      allowNull: true,
+      defaultValue: null
     },
     derivativehash:{
       type: DataTypes.STRING(512),
