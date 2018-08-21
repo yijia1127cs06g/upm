@@ -2,9 +2,9 @@
 <html>
 
 <head>
-    <title>
-        <%= title %>
-    </title>
+	<title>
+		<%= title %>
+	</title>
 <meta http-equiv="refresh" content="20">	
 	<style>
 		body {
@@ -61,76 +61,72 @@
 			color: #f00;
 			font-size: 12px;
 		}	
-    </style>
+	</style>
 
-    <script>
-    
-    
-    
-    </script>
+	<script>
+	
+	
+	
+	</script>
 </head>
 
 <body>
-    <h2>Software Installation Logs</h2>
-    <div class="control">
-        <input class="btn" type='submit' value='Reload' onclick="javascript: location.href='/log'">
-    </div>
-    <table class="table">
-        <tr bgcolor="#157de" align="left">
-            <th>#</th>
+	<h2>Software Installation Logs</h2>
+	<div class="control">
+		<input class="btn" type='submit' value='Reload' onclick="javascript: location.href='/log'">
+	</div>
+	<table class="table">
+		<tr bgcolor="#157de" align="left">
+			<th>#</th>
 			<th>Time</th>
-            <th>Host ip</th>
+			<th>Host ip</th>
 			<th>Product</th>
 			<th>Site</th>
 			<th>Package</th>
-            <th>Updater</th>
-			<th>Hash</th>
-			<th>Signature</th>
-			<th>Derivative</th>			
-      <th>Derivative Hash</th>
-            <th></th>
-        </tr>
+			<th>Updater</th>
+			<th>Hash</th>			
+			<th>Derivative</th>
+			<th>DerivativeHash</th>
+			<th></th>
+		</tr>
 		<% if( data!=undefined && data.length>0 ) {%>
-        <% for ( var i = 0 ; i <data.length  ; i++){ %>
-            <tr bgcolor="#aed6f1" align="left" >
-                <td>
-                    <%= data[i].install_id  %>
-                </td>
-                <td style="white-space:nowrap">
-                    <%= data[i].time.toLocaleString() %>
-                </td>				
-                <td>
-                    <%= data[i].hostip  %>
-                </td>
-                <td>
-                    <%= data[i].install.product  %>
-                </td>				
-                <td>
-                    <%= data[i].install.site  %>
-                </td>
-                <td>
-                    <%= data[i].install.package  %>
-                </td>
-                <td>
-                    <%= data[i].install.updater  %>
-                </td>
-                <td>
-                    <%= data[i].install.updaterhash %>
-                </td>
-                <td>
-                    <%= data[i].install.updatersig  %>
-                </td>
-                <td>
-                    <%= data[i].install.derivative  %>
-                </td>
-                <td>
-                  <%= data[i].install.derivativehash   %>
-                </td>
-                <td></td>
-            </tr>
-        <% } %>
+		<% for ( var i = 0 ; i <data.length  ; i++){ %>
+			<tr bgcolor="#aed6f1" align="left" >
+				<td>
+					<%= data[i].id  %>
+				</td>
+				<td style="white-space:nowrap">
+					<%= data[i].time.toLocaleString() %>
+				</td>				
+				<td>
+					<%= data[i].hostip  %>
+				</td>
+				<td>
+					<%= data[i].product  %>
+				</td>				
+				<td>
+					<%= data[i].site  %>
+				</td>
+				<td>
+					<%= data[i].package  %>
+				</td>
+				<td>
+					<%= data[i].updater  %>
+				</td>
+				<td>
+					<%= data[i].updaterhash  %>
+				</td>
+				<td>
+					<%= data[i].derivative  %>
+				</td>
+				<td>
+					<%= data[i].derivativehash  %>
+				</td>                
+				<td></td>
+			</tr>
 		<% } %>
-    </table>
+		<% } %>
+	</table>
 </body>
 
 </html>

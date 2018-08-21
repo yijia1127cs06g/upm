@@ -165,7 +165,7 @@
 				success: function(resp, status, xhr) {
 					if(resp!=null && resp.result=="succ" && resp.list!=undefined ) {
 						var i,k,s,list= resp.list;
-						var sig;
+						var sig,derivative;
 						var $el;
 
 						if(list.length<=last_index) {
@@ -173,6 +173,9 @@
 						}
 
 						for(i=last_index+1; i<list.length; i++) {
+							sig= "";
+							derivative= "";
+
 							if(list[i].updatersig!=undefined) {
 								sig= list[i].updatersig;
 								k= sig.indexOf("/");
@@ -180,31 +183,35 @@
 									sig= sig.substring(0, k);
 								}
 							}
-							else {
-								sig= '';
+
+							if(list[i].derivative!=undefined && list[i].derivative!=list[i].updater) {
+								derivative= list[i].derivative;
 							}
 
 							s= '<table class="table dark" style="display:none"> <tr align="left"> <th></th> <th>偵測到 <span style="color:#c00000">' + list[i].product + '</span>自動更新</th><th></th></tr>';
 							s+= '<tr bgcolor="#aed6f1" align="left"> <td valign="bottom" style="text-align: center;"><span class="feedback">已收到 <span class="count" id="' + list[i].id + '">' + list[i].counter + '</span>個更新回報</span></td>';
 							s+= '<td valign="top">';
 							s+= '<br><span class="label">　時間　　　</span>' + list[i].last_modify;
-							s+= '<br><span class="label">　下載點　　</span>' + list[i].site;
+							if( list[i].site!=undefined && list[i].site!="") {
+								s+= '<br><span class="label">　下載點　　</span>' + list[i].site;
+							}
 							s+= '<br><span class="label">　安裝包　　</span>' + list[i].package;
 							s+= '<br><span class="label">　更新程式　</span>' + list[i].updater;
 							s+= '<br><span class="label">　數位簽章　</span>' + sig;
-							s+= '<br><span class="label">' + (list[i].derivative!=undefined?'　衍生更新　':'') + '</span>';
+							s+= '<br><span class="label">' + (derivative!=""?'　衍生更新　':'') + '</span>'  + derivative;
 							s+= '</td>';
 							s+= '<td valign="top">';
 							s+= '<br><span class="label">　　 </span>';
-							s+= '<br>TRUSTED!';
 							s+= '<br>';
 							s+= '<br>';
-							s+= '<br>' + (list[i].updatersig!=undefined && list[i].updatersig.length>0?' VERIFIED! ': '');
+							s+= '<br>' + (list[i].counter>=3?'TRUSTED':'');
+							s+= '<br>';
 							s+= '<br>';
 							s+= '</td>';
 							s+= '</tr>';
 							s+= '<tr> <td style="height:100px; background-image:none; background-color:black"></td> <td valign="top" style="height:100px; padding-left:134px; padding-top:10px; font-size:14px; font-weight:500; line-height:16px; background-image:none; background-color:black; color:grey">';
 							//s+= '<<Installation Logs>>';
+							//fake data
 							if( list[i].updater.indexOf("updater")>=0)
 								s+= updater_log;
 							else if( list[i].updater.indexOf("helper")>=0)
