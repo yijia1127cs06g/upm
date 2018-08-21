@@ -20,25 +20,25 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(512),
       allowNull: true
     },
+    root: {
+      type: DataTypes.STRING(512),
+      allowNull: true
+    },
+    roothash: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
+      defaultValue: null
+    },
+    rootsig: {
+      type: DataTypes.STRING(512),
+      allowNull: true
+    },
     updater: {
       type: DataTypes.STRING(512),
-      allowNull: true
-    },
-    updaterhash: {
-      type: DataTypes.STRING(512),
       allowNull: true,
       defaultValue: null
     },
-    updatersig: {
-      type: DataTypes.STRING(512),
-      allowNull: true
-    },
-    derivative: {
-      type: DataTypes.STRING(512),
-      allowNull: true,
-      defaultValue: null
-    },
-    derivativehash:{
+    updaterhash:{
       type: DataTypes.STRING(512),
       allowNull: false
     },

@@ -6,7 +6,7 @@ const Op = models.Sequelize.Op;
 
 /* ----- User defined ----- */
 var paramLists = ["product", "hostip", "updaterhash",
-                  "updater", "derivative", "derivativehash"];
+                  "updater", "root", "roothash"];
 
 const TIME_LIMIT = 300;
 const COUNTER = 3;
@@ -104,10 +104,10 @@ router.post('/install', function(req, res, next) {
     models.install.findOrCreate({
       where:{
         product: body.product, 
-        updater: body.updater, 
+        root: body.root, 
+        roothash: body.roothash, 
         updaterhash: body.updaterhash, 
-        derivativehash: body.derivativehash, 
-        derivative: body.derivative
+        updater: body.updater
       }
     }).spread( (installData,isNewInstall) => {
       console.log(isNewInstall);
@@ -135,7 +135,9 @@ router.post('/install', function(req, res, next) {
         var oldTime = new Date(installData.last_modify).getTime();
         var newTime = new Date(body.time).getTime();
 
-        if (newTime>oldTime && ((newTime-oldTime)<TIME_LIMIT)){
+        if (newTime>oldTime && ((newTime-oldTime)<(TIME_LIMIT*1000))){
+          console.log(newTime)
+          console.log(oldTime)
           console.log("check log existence");
           models.log.findOrCreate({
             where:{
@@ -161,7 +163,7 @@ router.post('/install', function(req, res, next) {
                 res.send('{ "result": "fail", "reason": "log is existed"}');
             }
           });
-        }else{ // Install log is over 30 day
+        }else{ // Install log is over TIME_LIMIT
             res.setHeader('Content-Type', 'application/json');
             res.send('{ "result": "fail", "reason":"install is Expired"}');
 
@@ -191,10 +193,10 @@ router.get('/installs', function(req, res, next) {
       var i,s,sig;
       s = '{"result": "succ", "list": [';
       for(let i=0; i<rows.length; i++) {
-        sig= rows[i].updatersig!=undefined? rows[i].updatersig : "";
+        sig= rows[i].rootsig!=undefined? rows[i].rootsig : "";
         s+= '{"id": ' + rows[i].id + ', "counter": ' + rows[i].counter + ', "last_modify": "' + rows[i].last_modify.toLocaleString() + '" , "product": "' + rows[i].product + '"';
           s+= ', "site": "' + rows[i].site + '", "package": "' + rows[i].package + '"';
-          s+= ', "updater": "' + rows[i].updater + '", "updatersig": "' + sig + '"';
+          s+= ', "root": "' + rows[i].root + '", "rootsig": "' + rootsig + '"';
           s+= '}';
 				if(i<(rows.length-1))
           s+= ', ';
@@ -245,7 +247,7 @@ router.get('/updaters', function(req, res, next) {
       else {
         list= '{"total": "' + rows.length + '", "end": "'+rows[rows.length-1].id+ '", "list": [';
         for (let row of rows)
-          list+= '{"seq": "' + row.id + '", "updater": "' + row.updater + '", "derivativehash": "' + row.derivativehash + '"},';
+          list+= '{"seq": "' + row.id + '", "root": "' + row.root + '", "updaterhash": "' + row.updaterhash + '"},';
         list = list.slice(0,-1) + ']}';
       }
         console.log("list=" + list);
@@ -268,13 +270,13 @@ router.post('/query_updater', function(req, res, next) {
 	
 	console.log("======");
 	
-	if(req.body.package!=undefined && req.body.derivativehash!=undefined) {
+	if(req.body.package!=undefined && req.body.updaterhash!=undefined) {
 
 		console.log("query updater:");
     
     models.install.findAll({
       where: {
-        derivativehash: req.body.derivativehash,  
+        updaterhash: req.body.updaterhash,  
         counter: {[Op.gte]: COUNTER}  //counter >= 1
       }
     }).then(rows => {
@@ -285,8 +287,7 @@ router.post('/query_updater', function(req, res, next) {
         res.send('{"trust": "false"}');
       } else {
         var s= 'counter=' + (rows[0].counter);
-        var chk= makeChkSum(rows[0].derivativehash);
-        console.log(s);
+        var chk= makeChkSum(rows[0].updaterhash);
         res.setHeader('Content-Type', 'application/json');
         res.send('{"trust": "true", "check":"' + chk+ '"}');
       }

@@ -83,10 +83,10 @@
 			<th>Product</th>
 			<th>Site</th>
 			<th>Package</th>
-			<th>Updater</th>
+			<th>Root</th>
 			<th>Hash</th>			
-			<th>Derivative</th>
-			<th>DerivativeHash</th>
+			<th>Updater</th>
+			<th>UpdaterHash</th>
 			<th></th>
 		</tr>
 		<% if( data!=undefined && data.length>0 ) {%>
@@ -111,16 +111,16 @@
 					<%= data[i].package  %>
 				</td>
 				<td>
+					<%= data[i].root  %>
+				</td>
+				<td>
+					<%= data[i].roothash  %>
+				</td>
+				<td>
 					<%= data[i].updater  %>
 				</td>
 				<td>
 					<%= data[i].updaterhash  %>
-				</td>
-				<td>
-					<%= data[i].derivative  %>
-				</td>
-				<td>
-					<%= data[i].derivativehash  %>
 				</td>                
 				<td></td>
 			</tr>
